@@ -122,20 +122,6 @@ uint32_t x=0;
 
 void loop()
 {
-  // Manually turn the outlets on and off from the serial input. 1 for on, 0 for off.
-  if (Serial.available() > 0) {
-    int incomingByte = Serial.read();
-
-    // Typing 1 enables the outlet
-    if (incomingByte == 49) {
-      enableOutlet(3, true);
-
-    // Typing 0 disables the outlet
-    } else if (incomingByte == 50) {
-      enableOutlet(3, false);
-    }
-  }
-
   // Ensure the connection to the MQTT server is alive (this will make the first
   // connection and automatically reconnect when disconnected).  See the MQTT_connect
   // function definition further below.
@@ -143,17 +129,14 @@ void loop()
 
   // this is our 'wait for incoming subscription packets' busy subloop
   Adafruit_MQTT_Subscribe *subscription;
-  while ((subscription = mqtt.readSubscription(2000))) {
+  while ((subscription = mqtt.readSubscription(1000))) {
     if (subscription == &outlet3) {
-      Serial.print(F("Outlet 3: "));
-      Serial.println((char *)outlet3.lastread);
-
-      /*if (strcmp((char *)outlet3.lastread, "ON") == 0) {
+      if (strcmp((char *)outlet3.lastread, "ON") == 0) {
         enableOutlet(3, true);
       }
       if (strcmp((char *)outlet3.lastread, "OFF") == 0) {
         enableOutlet(3, false);
-      }*/
+      }
     }
   }
 
