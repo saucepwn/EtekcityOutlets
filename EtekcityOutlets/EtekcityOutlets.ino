@@ -1,14 +1,8 @@
-#include <SPI.h>
-#include "Adafruit_MQTT.h"
 #include "Adafruit_MQTT_Client.h"
-
 #include <Ethernet.h>
-#include <EthernetClient.h>
-#include <Dns.h>
-#include <Dhcp.h>
-
-// Sniffer to obtain codes available at: https://codebender.cc/sketch:80286
 #include <RCSwitch.h>
+
+//#define DEBUG 1
 
 /*************************** Network Setup ***********************************/
 
@@ -44,27 +38,28 @@ unsigned long rc_codes[3][2] = {
 EthernetClient client;
 Adafruit_MQTT_Client mqtt(&client, AIO_SERVER, AIO_SERVERPORT, AIO_USERNAME, AIO_KEY);
 
-//Adafruit_MQTT_Subscribe outlet1 = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/f/outlet-1");
-//Adafruit_MQTT_Subscribe outlet2 = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/f/outlet-2");
-Adafruit_MQTT_Subscribe outlet3 = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/f/outlet-3");
+//Adafruit_MQTT_Subscribe outlet1 = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/f/o1");
+//Adafruit_MQTT_Subscribe outlet2 = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/f/o2");
+Adafruit_MQTT_Subscribe outlet3 = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/f/o3");
 
 /*************************** Sketch Code ************************************/
 RCSwitch sendSwitch = RCSwitch();
 
-// What does this do??
-#define halt(s) { Serial.println(F( s )); while(1);  }
-
 void setup()
 {
   Serial.begin(115200);
-  Serial.println("Starting EtekcityOutlets sketch");
+#ifdef DEBUG
+  Serial.println(F("Starting EtekcityOutlets sketch"));
+#endif
   
   setupRfTransmitter();
   setupEthernet();
 }
 
 void setupEthernet() {
-  Serial.println("Initializing Ethernet...");
+#ifdef DEBUG
+  Serial.println(F("Initializing Ethernet..."));
+#endif
 
   Ethernet.begin(mac);
   delay(1000); //give the ethernet a second to initialize
@@ -72,53 +67,45 @@ void setupEthernet() {
   //mqtt.subscribe(&outlet2);
   mqtt.subscribe(&outlet3);
 
-  Serial.println("Ethernet initialized!");
+#ifdef DEBUG
+  Serial.println(F("Ethernet initialized!"));
+#endif
 }
 
 void setupRfTransmitter() {
-  Serial.println("Initializing RF...");
-  
   sendSwitch.enableTransmit(RC_PIN_TX);
   sendSwitch.setProtocol(RC_PROTOCOL); // defaults to 1 anyway
   sendSwitch.setPulseLength(RC_PULSE_LENGTH); // this is critical
-
-  Serial.println("RF initialized!");
 }
 
-void enableOutlet(int outletNumber, bool onOrOff)
-{
-  if (outletNumber < 1 || outletNumber > 3)
-  {
-    Serial.println("Invalid outlet number");
-    return;
-  }
-  
+void enableOutlet(unsigned char outletNumber, bool onOrOff)
+{  
   unsigned long *onOffCodes = rc_codes[outletNumber - 1];
   unsigned long codeToSend = onOffCodes[onOrOff ? 0 : 1];
   sendSwitch.send(codeToSend, RC_BIT_LENGTH);
-  
+
+#ifdef DEBUG
   char outletNumberString[1];
   int retVal = snprintf(outletNumberString, 1, "%d", outletNumber);
   if (retVal < 0)
   {
-    Serial.println("Log encoding error");
+    Serial.println(F("Log encoding error"));
     return;
   }
-  
+
   if (onOrOff)
   {
-    Serial.print("Enabling");
+    Serial.print(F("Enabling"));
   }
   else
   {
-    Serial.print("Disabling");
+    Serial.print(F("Disabling"));
   }
   
-  Serial.print(" outlet ");
+  Serial.print(F(" outlet "));
   Serial.println(outletNumberString);
+#endif
 }
-
-uint32_t x=0;
 
 void loop()
 {
@@ -131,10 +118,10 @@ void loop()
   Adafruit_MQTT_Subscribe *subscription;
   while ((subscription = mqtt.readSubscription(1000))) {
     if (subscription == &outlet3) {
-      if (strcmp((char *)outlet3.lastread, "ON") == 0) {
+      int command = atoi((char *)outlet3.lastread);
+      if (command == 1) {
         enableOutlet(3, true);
-      }
-      if (strcmp((char *)outlet3.lastread, "OFF") == 0) {
+      } else if (command == 0) {
         enableOutlet(3, false);
       }
     }
@@ -156,13 +143,20 @@ void MQTT_connect() {
     return;
   }
 
-  Serial.print("Connecting to MQTT... ");
+#ifdef DEBUG
+  Serial.print(F("Connecting to MQTT... "));
+#endif
 
   while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected
+#ifdef DEBUG
        Serial.println(mqtt.connectErrorString(ret));
-       Serial.println("Retrying MQTT connection in 5 seconds...");
+       Serial.println(F("Retrying MQTT connection in 5 seconds..."));
+#endif
        mqtt.disconnect();
        delay(5000);  // wait 5 seconds
   }
-  Serial.println("MQTT Connected!");
+
+#ifdef DEBUG
+  Serial.println(F("MQTT Connected!"));
+#endif
 }
