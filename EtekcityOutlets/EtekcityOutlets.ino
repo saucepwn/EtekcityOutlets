@@ -38,9 +38,7 @@ unsigned long rc_codes[3][2] = {
 EthernetClient client;
 Adafruit_MQTT_Client mqtt(&client, AIO_SERVER, AIO_SERVERPORT, AIO_USERNAME, AIO_KEY);
 
-//Adafruit_MQTT_Subscribe outlet1 = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/f/o1");
-//Adafruit_MQTT_Subscribe outlet2 = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/f/o2");
-Adafruit_MQTT_Subscribe outlet3 = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/f/o3");
+Adafruit_MQTT_Subscribe bedroomLights = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/f/bl");
 
 /*************************** Sketch Code ************************************/
 RCSwitch sendSwitch = RCSwitch();
@@ -63,9 +61,7 @@ void setupEthernet() {
 
   Ethernet.begin(mac);
   delay(1000); //give the ethernet a second to initialize
-  //mqtt.subscribe(&outlet1);
-  //mqtt.subscribe(&outlet2);
-  mqtt.subscribe(&outlet3);
+  mqtt.subscribe(&bedroomLights);
 
 #ifdef DEBUG
   Serial.println(F("Ethernet initialized!"));
@@ -117,12 +113,16 @@ void loop()
   // this is our 'wait for incoming subscription packets' busy subloop
   Adafruit_MQTT_Subscribe *subscription;
   while ((subscription = mqtt.readSubscription(1000))) {
-    if (subscription == &outlet3) {
-      int command = atoi((char *)outlet3.lastread);
+    if (subscription == &bedroomLights) {
+      int command = atoi((char *)bedroomLights.lastread);
       if (command == 1) {
-        enableOutlet(3, true);
+        enableOutlet(1, true);
+        delay(800);
+        enableOutlet(2, true);
       } else if (command == 0) {
-        enableOutlet(3, false);
+        enableOutlet(1, false);
+        delay(800);
+        enableOutlet(2, false);
       }
     }
   }
